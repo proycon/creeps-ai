@@ -58,17 +58,17 @@ module.exports.loop = function () {
         if (!spawner.spawning) { //if we are not already spawning
             if (harvesters < harvester_quotum) {
                 var newName = 'Harvester' + Game.time;
-                if (spawner.spawnCreep([WORK,CARRY,MOVE], newName, {memory: {role: 'harvester'}}) == OK) {
+                if (spawner.spawnCreep(parts, newName, {memory: {role: 'harvester'}}) == OK) {
                     console.log('Spawning new harvester: ' + newName);
                 }
             } else if (upgraders < upgrader_quotum) {
                 var newName = 'Upgrader' + Game.time;
-                if (spawner.spawnCreep([WORK,CARRY,MOVE], newName, {memory: {role: 'upgrader'}}) == OK) {
+                if (spawner.spawnCreep(parts, newName, {memory: {role: 'upgrader'}}) == OK) {
                     console.log('Spawning new upgrader: ' + newName);
                 }
             } else if (builders < builder_quotum) {
                 var newName = 'Builder' + Game.time;
-                if (spawner.spawnCreep([WORK,CARRY,MOVE], newName, {memory: {role: 'builder'}}) == OK) {
+                if (spawner.spawnCreep(parts, newName, {memory: {role: 'builder'}}) == OK) {
                     console.log('Spawning new builder: ' + newName);
                 }
             }
