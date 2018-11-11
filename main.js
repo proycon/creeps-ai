@@ -10,7 +10,7 @@ module.exports.loop = function () {
     }
     var logmsg;
     if (Game.time % 10 == 0) {
-        logmsg = 'Tick ' + Game.time + ', total energy: ' + totalenergy, ', Satiated? ', Memory.satiated;
+        logmsg = 'Tick ' + Game.time + ', total energy: ' + totalenergy + ', satiated? ' + Memory.satiated;
     }
 
     for(var name in Game.structures) {
