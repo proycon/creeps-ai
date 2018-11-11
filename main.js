@@ -9,7 +9,7 @@ module.exports.loop = function () {
         totalenergy += Game.rooms[name].energyAvailable;
     }
     if (Game.time % 10 == 0) {
-        console.log('Tick ' + Game.time + ', total energy: ' + totalenergy);
+        console.log('Tick ' + Game.time + ', total energy: ' + totalenergy, ', Satiated? ', Memory.satiated);
     }
 
     for(var name in Game.structures) {
@@ -24,17 +24,17 @@ module.exports.loop = function () {
     var builders = 0;
     for(var name in Game.creeps) {
         var creep = Game.creeps[name];
-        if(creep.memory.role == 'harvester') {
-            harvesters++;
-            roles.harvest(creep);
+        if ((creep.memory.role == 'builder') || (creep.memory.building)) {
+            builders++;
+            roles.build(creep);
         }
-        if(creep.memory.role == 'upgrader') {
+        if ((creep.memory.role == 'upgrader') || (creep.memory.upgrading)) {
             upgraders++;
             roles.upgrade(creep);
         }
-        if(creep.memory.role == 'builder') {
-            builders++;
-            roles.build(creep);
+        if(creep.memory.role == 'harvester') {
+            harvesters++;
+            roles.harvest(creep);
         }
     }
 
@@ -60,6 +60,14 @@ module.exports.loop = function () {
                     console.log('Spawning new builder: ' + newName);
                 }
             }
+        }
+    }
+
+    //Garbage collection
+    for(var name in Memory.creeps) {
+        if(!Game.creeps[name]) {
+            delete Memory.creeps[name];
+            console.log('Clearing non-existing creep memory:', name);
         }
     }
 }
