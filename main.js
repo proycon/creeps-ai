@@ -41,13 +41,14 @@ module.exports.loop = function () {
     var harvester_quotum = 2;
     var upgrader_quotum = 1;
     var builder_quotum = 1;
-    if (totalenergy < 300) {
-        //
-    } else if (totalenergy < 400) {
+    if (totalenergy > 300) {
        harvester_quotum++;
-    } else if (totalenergy < 600) {
+    }
+    if (totalenergy >= 600) {
        builder_quotum++;
-    } else if (totalenergy > 1000) {
+       harvester_quotum++;
+    }
+    if (totalenergy > 1000) {
        parts = [WORK, CARRY,CARRY,MOVE,MOVE]
     }
 
