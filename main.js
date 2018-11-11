@@ -36,23 +36,36 @@ module.exports.loop = function () {
         }
     }
 
+    var parts = [WORK,CARRY,MOVE]
+    var harvester_quotum = 2;
+    var upgrader_quotum = 1;
+    var builder_quotum = 1;
+    if (totalenergy < 300) {
+        //
+    } else if (totalenergy < 400) {
+       harvester_quotum++;
+    } else if (totalenergy < 600) {
+       builder_quotum++;
+    } else if (totalenergy > 1000) {
+       parts = [WORK, CARRY,CARRY,MOVE,MOVE]
+    }
+
+
     //spawner
     var spawner = Game.spawns['ProySpawn1'];
     if (spawner.isActive()) { //check if it can be used
         if (!spawner.spawning) { //if we are not already spawning
-            if (harvesters < 2) {
+            if (harvesters < harvester_quotum) {
                 var newName = 'Harvester' + Game.time;
                 if (spawner.spawnCreep([WORK,CARRY,MOVE], newName, {memory: {role: 'harvester'}}) == OK) {
                     console.log('Spawning new harvester: ' + newName);
                 }
-            }
-            if (upgraders < 1) {
+            } else if (upgraders < upgrader_quotum) {
                 var newName = 'Upgrader' + Game.time;
                 if (spawner.spawnCreep([WORK,CARRY,MOVE], newName, {memory: {role: 'upgrader'}}) == OK) {
                     console.log('Spawning new upgrader: ' + newName);
                 }
-            }
-            if (builders < 1) {
+            } else if (builders < builder_quotum) {
                 var newName = 'Builder' + Game.time;
                 if (spawner.spawnCreep([WORK,CARRY,MOVE], newName, {memory: {role: 'builder'}}) == OK) {
                     console.log('Spawning new builder: ' + newName);
