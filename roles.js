@@ -25,7 +25,6 @@ var roles = {
                 if (moveresult == OK) {
                 }
             }
-
         } else {
             creep.memory.source = false;
             var targets = creep.room.find(FIND_STRUCTURES, {
