@@ -77,7 +77,7 @@ module.exports.loop = function () {
     }
 
     if (Game.time % 10 == 0) {
-        console.log(logmsg + ", Harvesters: " + harvesters, ", Builders: " + builders, ", Upgraders: " +  upgraders);
+        console.log(logmsg + ", Harvesters: " + harvesters + "/" + harvester_quotum, ", Builders: " + builders + "/" + builder_quotum, ", Upgraders: " +  upgraders + "/" + upgrader_quotum)
     }
 
     //Garbage collection
