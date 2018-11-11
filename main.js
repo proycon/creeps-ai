@@ -27,12 +27,10 @@ module.exports.loop = function () {
         if ((creep.memory.role == 'builder') || (creep.memory.building)) {
             builders++;
             roles.build(creep);
-        }
-        if ((creep.memory.role == 'upgrader') || (creep.memory.upgrading)) {
+        } else if ((creep.memory.role == 'upgrader') || (creep.memory.upgrading)) {
             upgraders++;
             roles.upgrade(creep);
-        }
-        if(creep.memory.role == 'harvester') {
+        } else if(creep.memory.role == 'harvester') {
             harvesters++;
             roles.harvest(creep);
         }
