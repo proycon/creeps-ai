@@ -8,8 +8,9 @@ module.exports.loop = function () {
     for(var name in Game.rooms) {
         totalenergy += Game.rooms[name].energyAvailable;
     }
+    var logmsg;
     if (Game.time % 10 == 0) {
-        console.log('Tick ' + Game.time + ', total energy: ' + totalenergy, ', Satiated? ', Memory.satiated);
+        logmsg = 'Tick ' + Game.time + ', total energy: ' + totalenergy, ', Satiated? ', Memory.satiated;
     }
 
     for(var name in Game.structures) {
@@ -72,6 +73,10 @@ module.exports.loop = function () {
                 }
             }
         }
+    }
+
+    if (Game.time % 10 == 0) {
+        console.log(logmsg + ", Harvesters: " + harvesters, ", Builders: " + builders, ", Upgraders: " +  upgraders);
     }
 
     //Garbage collection
