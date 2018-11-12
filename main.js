@@ -10,6 +10,7 @@ function planscene() {
         totalenergy: 0,
         totalcapacity: 0,
         harvesters: 0,
+        carriers: 0,
         upgraders: 0,
         builders: 0,
         repairers: 0,
