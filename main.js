@@ -221,17 +221,21 @@ function getaccessibility(target, scene) {
     if (target.id in Memory.accessibility) {
         return Memory.accessibility[target.id];
     }
-    const terrain = new Room.Terrain(target.room);
-    var result = 0;
-    for (var x = -1; x <= 1; x++) {
-        for (var y = -1; x <= 1; x++) {
-            if (!((x === 0) && (y === 0))) {
-                result += (terrain.get(target.pos.x - x, target.pos.y - y) != TERRAIN_MASK_WALL);
+    try {
+        const terrain = new Room.Terrain(target.room);
+        var result = 0;
+        for (var x = -1; x <= 1; x++) {
+            for (var y = -1; x <= 1; x++) {
+                if (!((x === 0) && (y === 0))) {
+                    result += (terrain.get(target.pos.x - x, target.pos.y - y) != TERRAIN_MASK_WALL);
+                }
             }
         }
+        Memory.accessibility[target.id] = result;
+        return result;
+    } catch {
+        return 6;
     }
-    Memory.accessibility[target.id] = result;
-    return result;
 }
 
 function run_tower(tower, scene) {
