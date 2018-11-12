@@ -1,0 +1,9 @@
+.env
+node_modules/
+dist/
+.sync
+build/
+account.screeps.com.js
+.localSync.js
+steam_appid.txt
+.screepsrc

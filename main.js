@@ -2,7 +2,7 @@ const PARAMETERS = {
     MAXDECAY: 0.2,
     MINRESERVE: 0.25, //minimum energy reserve
     DEBUG: true,
-}
+};
 
 function planscene() {
     //init
@@ -19,7 +19,7 @@ function planscene() {
         idler: 0,
         hostiles: [],
         hitsMax: 10000, //TODO: determine dynamically
-    }
+    };
 
     //iterate over rooms (single room only for now)
     Game.rooms.forEach(room => {
