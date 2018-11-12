@@ -92,6 +92,7 @@ function run(creep, scene) {
     if (creep.memory.role == "idle") {
         creep.memory.role = newrole(creep, scene);
         if (PARAMETERS.DEBUG) {
+            console.log("Worker " + creep.name + " assumed role " + creep.memory.role);
             creep.say(creep.memory.role);
         }
     }
@@ -103,6 +104,7 @@ function run(creep, scene) {
         }
         if (!target) {
             //we couldn't find a target, become idle
+            console.log("Worker " + creep.name + " (" + creep.memory.role + ") can't find a target");
             creep.say("no target");
             creep.memory.role = "idle";
             return false;
@@ -192,7 +194,7 @@ function cleanup() {
     for(var name in Memory.creeps) {
         if(!Game.creeps[name]) {
             if (Memory.creeps[name].target) {
-                Memory.allocation[target] -= 1;
+                Memory.allocation[Memory.creeps[name].target] -= 1;
             }
             delete Memory.creeps[name];
         }
