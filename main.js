@@ -91,6 +91,9 @@ function run(creep, scene) {
     var target;
     if (creep.memory.role == "idle") {
         creep.memory.role = newrole(creep, scene);
+        if (PARAMETERS.DEBUG) {
+            creep.say(creep.memory.role);
+        }
     }
     if (creep.memory.role != "idle") {
         if (!creep.memory.target) {
@@ -199,9 +202,9 @@ function cleanup() {
             delete Memory.incoming[obj];
         }
     }
-    for(var obj in Memory.accessibility) {
-        if(!Game.getObjectById[obj]) {
-            delete Memory.accessibility[obj];
+    for(var obj2 in Memory.accessibility) {
+        if(!Game.getObjectById[obj2]) {
+            delete Memory.accessibility[obj2];
         }
     }
 }
