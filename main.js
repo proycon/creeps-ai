@@ -163,7 +163,7 @@ function harvester(creep, target, scene) {
     if (result == OK) {
         decommission(creep, target);
     } else if (result == ERR_NOT_IN_RANGE) {
-        creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'}});
+        creep.moveTo(target, {visualizePathStyle: {stroke: '#ffaa00'}});
     }
 }
 
@@ -172,7 +172,7 @@ function carrier(creep, target, scene) {
     if (result == OK)  {
         decommission(creep, target);
     } else if (result == ERR_NOT_IN_RANGE) {
-        creep.moveTo(source, {visualizePathStyle: {stroke: '#0000aa'}});
+        creep.moveTo(target, {visualizePathStyle: {stroke: '#0000aa'}});
     } else if (result == ERR_FULL) {
         //find a new target
         commission(creep, scene);
