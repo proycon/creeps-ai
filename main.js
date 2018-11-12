@@ -233,7 +233,7 @@ function getaccessibility(target, scene) {
         }
         Memory.accessibility[target.id] = result;
         return result;
-    } catch {
+    } catch (e) {
         return 6;
     }
 }
