@@ -99,7 +99,7 @@ function run(creep, scene) {
     }
     if (creep.memory.role != "idle") {
         if (!creep.memory.target) {
-            target = commission(creep);
+            target = commission(creep, scene);
         } else {
             target = Game.getObjectById(creep.memory.target);
         }
@@ -111,9 +111,13 @@ function run(creep, scene) {
             return false;
         }
         if (creep.memory.role == "harvester") {
-            harvester(creep, target);
+            harvester(creep, target, scene);
         } else if (creep.memory.role == "carrier") {
-            carrier(creep, target);
+            carrier(creep, target, scene);
+        } else if (creep.memory.role == "repairer") {
+            console.log("TODO: implement repairer!")
+        } else if (creep.memory.role == "builder") {
+            console.log("TODO: implement builder!")
         }
         return true;
     }
@@ -154,7 +158,7 @@ function spawnblueprint(scene) {
     return [];
 }
 
-function harvester(creep, target) {
+function harvester(creep, target, scene) {
     var result = creep.harvest(target);
     if (result == OK) {
         decommission(creep, target);
@@ -163,7 +167,7 @@ function harvester(creep, target) {
     }
 }
 
-function carrier(creep, target) {
+function carrier(creep, target, scene) {
     var result = creep.transfer(target, RESOURCE_ENERGY);
     if (result == OK)  {
         decommission(creep, target);
@@ -171,7 +175,7 @@ function carrier(creep, target) {
         creep.moveTo(source, {visualizePathStyle: {stroke: '#0000aa'}});
     } else if (result == ERR_FULL) {
         //find a new target
-        commission(creep);
+        commission(creep, scene);
     } else {
         console.log("Unexpected result for carrier: " + result);
     }
