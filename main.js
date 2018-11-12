@@ -16,7 +16,7 @@ function planscene() {
         idlers: 0,
         hostiles: [],
         hitsMax: 10000, //TODO: determine dynamically
-        targets: {}
+        targets: {},
         parameters: {
             MAXDECAY: 0.2,
             MINRESERVE: 0.25, //minimum energy reserve
