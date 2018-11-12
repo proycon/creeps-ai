@@ -60,7 +60,7 @@ function commission(creep, scene) {
     if (creep.memory.target) {
         //we already have a target, set a new one
         target = Game.getObjectById(creep.memory.target);
-        decommission(null, target);
+        decommission(null, target, scene);
         target = null;
     }
     var potentialtargets = scene.targets[creep.memory.role];
@@ -166,7 +166,7 @@ function harvester(creep, target, scene) {
             if (scene.parameters.DEBUG) {
                 console.log("Worker " + creep.name + " is done harvesting")
             }
-            decommission(creep, target);
+            decommission(creep, target, scene);
         }
     } else if (result == ERR_NOT_IN_RANGE) {
         creep.moveTo(target, {visualizePathStyle: {stroke: '#ffaa00'}});
@@ -176,7 +176,7 @@ function harvester(creep, target, scene) {
 function carrier(creep, target, scene) {
     var result = creep.transfer(target, RESOURCE_ENERGY);
     if (result == OK)  {
-        decommission(creep, target);
+        decommission(creep, target, scene);
     } else if (result == ERR_NOT_IN_RANGE) {
         creep.moveTo(target, {visualizePathStyle: {stroke: '#0000aa'}});
     } else if (result == ERR_FULL) {
@@ -186,11 +186,11 @@ function carrier(creep, target, scene) {
         console.log("Unexpected result for carrier: " + result);
     }
     if (creep.carry.energy === 0) {
-        decommission(creep,target);
+        decommission(creep,target, scene);
     }
 }
 
-function decommission(creep, target) {
+function decommission(creep, target, scene) {
     if (creep) {
         if (scene.parameters.DEBUG) {
             console.log("Decommissioning " + creep.name)
