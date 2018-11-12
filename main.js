@@ -251,6 +251,10 @@ function run_tower(tower, scene) {
 
 module.exports.loop = function () {
 
+    if (!Memory.accessibility) {
+        Memory.accessibility = {};
+    }
+
     var scene = planscene();
 
     if (scene == null) {
