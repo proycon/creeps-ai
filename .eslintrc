@@ -1,6 +1,5 @@
 env:
   es6: true
-  esnext: true
   node: true
 
 globals:
@@ -13,10 +12,6 @@ globals:
 
 parserOptions:
   ecmaVersion: 8
-
-extends:
-  - eslint:recommended
-  - google
 
 # http://eslint.org/docs/rules/
 rules:

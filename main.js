@@ -1,3 +1,5 @@
+/*jshint esnext: true */
+
 const PARAMETERS = {
     MAXDECAY: 0.2,
     MINRESERVE: 0.25, //minimum energy reserve
@@ -27,7 +29,7 @@ function planscene() {
         scene.totalcapacity += room.energyCapacityAvailable;
         scene.creeps = room.find(FIND_MY_CREEPS);
         scene.hostiles = room.find(FIND_HOSTILE_CREEPS);
-        scene.towers =  room.find(FIND_MY_STRUCTURES, filter: structure => structure.structureType == STRUCTURE_TOWER),
+        scene.towers =  room.find(FIND_MY_STRUCTURES, { filter: structure => structure.structureType == STRUCTURE_TOWER });
         scene.creeps.forEach(creep => {
             if (!creep.memory.role) creep.memory.role = "idle";
             scene[creep.memory.role + 's']++;
@@ -36,14 +38,14 @@ function planscene() {
             harvester: room.find(FIND_SOURCES_ACTIVE),
             builder: room.find(FIND_MY_CONSTRUCTION_SITES),
             upgrader: room.controller,
-            carrier: room.find(FIND_MY_STRUCTURES, filter: structure => {
-                    return (structure.energyCapacity) && (structure.energy < structure.energyCapacity);
-            }),
-            repairer: room.find(FIND_MY_STRUCTURES, filter: {
+            carrier: room.find(FIND_MY_STRUCTURES, { filter: structure => {
+                return ((structure.energyCapacity) && (structure.energy < structure.energyCapacity));
+            }}),
+            repairer: room.find(FIND_MY_STRUCTURES, { filter: structure => {
                     return (structure.hitsMax) && (structure.hits < scene.hitsMax) && (structure.hits < (1- PARAMETERS.MAXDECAY) * structure.hitsMax);
-            }),
+            }}),
             attacker: scene.hostiles
-        }
+        };
     });
     return scene;
 }
@@ -52,16 +54,17 @@ function planscene() {
 
 function commission(creep, scene) {
     // commissions a creep to a target
+    var target = null;
     if (creep.memory.target) {
         //we already have a target, set a new one
-        var target = Game.getObjectById(creep.memory.target);
+        target = Game.getObjectById(creep.memory.target);
         decommission(null, target);
+        target = null;
     }
     var potentialtargets = scene.targets[creep.memory.role];
-    var target = null;
     if (potentialtargets.length == 1) {
         //easy, only one target
-        target = potentialtargets[0]
+        target = potentialtargets[0];
     } else if (potentialtargets.length > 1) {
         for (var key in _.sortBy(potentialtargets, t => creep.pos.getRangeTo(t))) {
             target = potentialtargets[key];
@@ -112,7 +115,7 @@ function run(creep, scene) {
 
 function newrole(creep, scene) {
     //assign a role for this creep
-    if ((creep.carry) && (creep.carry.energy > 0)) (
+    if ((creep.carry) && (creep.carry.energy > 0)) {
         //we have energy to do something
         if ((scene.totalenergy < PARAMETERS.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
             //not enough reserves, carry for storage
@@ -134,9 +137,9 @@ function newrole(creep, scene) {
     }
 }
 
-function spawnblueprint(scene) (
+function spawnblueprint(scene) {
     if ((scene.totalenergy > PARAMETERS.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
-        if (scene.totalcapacity > 600)
+        if (scene.totalcapacity > 600) {
             return  [WORK, CARRY,CARRY,MOVE,MOVE];
         } else {
             return [WORK, CARRY, MOVE];
@@ -164,10 +167,10 @@ function carrier(creep, target) {
         //find a new target
         commission(creep);
     } else {
-        console.log("Unexpected result for carrier: " + result)
+        console.log("Unexpected result for carrier: " + result);
     }
-    if (creep.carry.energy == 0) {
-        decommission(creep,target)
+    if (creep.carry.energy === 0) {
+        decommission(creep,target);
     }
 }
 
@@ -210,9 +213,9 @@ function getaccessibility(target, scene) {
     }
     const terrain = new Room.Terrain(room);
     var result = 0;
-    for (var x = -1, x <= 1; x++) {
-        for (var y = -1, x <= 1; x++) {
-            if (!((x == 0) && (y == 0))) {
+    for (var x = -1; x <= 1; x++) {
+        for (var y = -1; x <= 1; x++) {
+            if (!((x === 0) && (y === 0))) {
                 result += (terrain.get(target.pos.x - x, target.pos.y - y) != TERRAIN_MASK_WALL);
             }
         }
@@ -240,7 +243,7 @@ module.exports.loop = function () {
 
     var scene = planscene();
 
-    if (Game.time % 10 == 0) {
+    if (Game.time % 10 === 0) {
         if (PARAMETERS.DEBUG) {
             console.log(scene);
         }
@@ -253,7 +256,7 @@ module.exports.loop = function () {
 
     scene.towers.forEach(tower => {
         run_tower(tower, scene);
-    }
+    });
 
     Game.spawns.forEach(spawner => {
         if (spawner.isActive()) { //check if it can be used
@@ -271,4 +274,4 @@ module.exports.loop = function () {
     });
 
     cleanup();
-}
+};
