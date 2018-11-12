@@ -93,11 +93,7 @@ function commission(creep, scene) {
         Memory.servers[target.id].push(creep.name);
     }
     if (scene.parameters.DEBUG) {
-        console.log("Added " + creep.name + " to servers for " + target.id  + ": " + JSON.stringify(Memory.servers[target.id]))
-    }
-
-    if (scene.parameters.DEBUG) {
-        console.log("servers for " + target.id + ": " + Memory.servers[target.id]);
+        console.log("Added " + creep.name + " to servers for " + target.id + " [" + target.name + "]: " + JSON.stringify(Memory.servers[target.id]))
     }
     return target;
 }
@@ -240,37 +236,41 @@ function decommission(creep, target, scene) {
         if (scene.parameters.DEBUG) {
             console.log("Decommissioning " + creep.name)
         }
-        creep.memory.role = "idle";
         creep.memory.target = null;
         if ((target.id in Memory.servers) && (Memory.servers[target.id])) {
-            console.log(target.id);
-            var index = Memory.servers[target.id];
+            var index = Memory.servers[target.id].indexOf(creep.name);
             if (index > -1) {
-                Memory.servers[target_id].splice(index,1);
+                Memory.servers[target.id].splice(index,1);
+                if (scene.parameters.DEBUG) {
+                    console.log("Removed " + creep.name + " [" + creep.memory.role + "] from servers for " + target.id + " [" + target.name + "]: " + JSON.stringify(Memory.servers[target.id]))
+                }
             }
         }
-    }
-    if (target) {
+        creep.memory.role = "idle";
+    } else if (target) {
         if (target.id in Memory.servers) {
             delete Memory.servers[target.id];
         }
         if (scene.parameters.DEBUG) {
-            console.log("Decommissioning target " + target.id + ": " + JSON.stringify(Memory.servers[target.id]));
+            console.log("Removed target " + target.id + ": " + JSON.stringify(Memory.servers[target.id]));
         }
     }
 }
 
 
-function cleanup() {
+function cleanup(scene) {
     //Garbage collection
     for(var name in Memory.creeps) {
         if(!Game.creeps[name]) {
             var target_id = Memory.creeps[name].target;
             if ((target_id) && (target_id in Memory.servers)) {
                 if (target_id in Memory.servers) {
-                    var index = Memory.servers[target_id];
+                    var index = Memory.servers[target_id].indexOf(name);
                     if (index > -1) {
                         Memory.servers[target_id].splice(index,1);
+                        if (scene.parameters.DEBUG) {
+                            console.log("[CLEANUP] Removed " + creep.name + " [" + creep.memory.role + "] from servers for " + target.id + " [" + target.name + "]: " + JSON.stringify(Memory.servers[target.id]))
+                        }
                     }
                 }
             }
@@ -381,5 +381,5 @@ module.exports.loop = function () {
         }
     });
 
-    cleanup();
+    cleanup(scene);
 };
