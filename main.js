@@ -221,7 +221,7 @@ function getaccessibility(target, scene) {
     if (target.id in Memory.accessibility) {
         return Memory.accessibility[target.id];
     }
-    const terrain = new Room.Terrain(room);
+    const terrain = new Room.Terrain(target.room);
     var result = 0;
     for (var x = -1; x <= 1; x++) {
         for (var y = -1; x <= 1; x++) {
