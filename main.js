@@ -128,12 +128,12 @@ function newrole(creep, scene) {
     //assign a role for this creep
     if ((creep.carry) && (creep.carry.energy > 0)) {
         //we have energy to do something
-        if ((scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
+        if ((scene.harvesters > 2) && (scene.upgraders < 1)) {
+            //we have no upgrader
+            return "upgrader";
+        } else if ((scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
             //not enough reserves, carry for storage
             return "carrier";
-        } else if (scene.upgraders < 1) {
-            //we have no upgrade
-            return "upgrader";
         } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0)) {
             return "repairer";
         } else if ((scene.targets.builder) && (scene.targets.builder.length > 0)) {
@@ -280,7 +280,7 @@ module.exports.loop = function () {
 
     if (Game.time % 10 === 0) {
         if (scene.parameters.DEBUG) {
-            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + "Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers);
+            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers);
         }
     }
 
