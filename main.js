@@ -23,7 +23,8 @@ function planscene() {
             MAXDECAY: 0.2,
             MINRESERVE: 0.25, //minimum energy reserve
             DEBUG: true,
-            MAXCREEPS: 15,
+            MAXWORKERFACTOR: 2, //three times as many as we have access points near sources (since many will be travelling or working anyway)
+            ACCESSIBILITYFACTOR: 2,
         }
     };
 
@@ -51,10 +52,11 @@ function planscene() {
             }}),
             attacker: scene.hostiles
         };
-        scene.maxharvesters = 0;
+        scene.maxworkers = 0;
         scene.targets.harvester.forEach(t => {
-            scene.maxharvesters += getaccessibility(t, scene);
+            scene.maxworkers += getaccessibility(t, scene);
         });
+        scene.maxworkers = scene.maxworkers * scene.parameters.MAXWORKERFACTOR;
         scene.demandrole = findrole(scene);
     });
     return scene;
@@ -79,10 +81,15 @@ function commission(creep, scene) {
         //easy, only one target
         target = potentialtargets[0];
     } else if (potentialtargets.length > 1) {
+        var leastservers; //tODO
         for (var key in _.sortBy(potentialtargets, t => creep.pos.getRangeTo(t.pos))) {
             var candidate = potentialtargets[key];
             if (creep.memory.role == "harvester") {
-                if (!(candidate.id in Memory.servers) || (Memory.servers[candidate.id].length <= getaccessibility(candidate, scene))) {
+                if (creep.pos.inRangeTo(candidate,1)) {
+                    //well, we're already in range
+                    target = candidate;
+                    break;
+                } else if (!(candidate.id in Memory.servers) || (Memory.servers[candidate.id].length <= getaccessibility(candidate, scene) * scene.parameters.ACCESSIBILITYFACTOR)) {
                     //servers not full yet, good, we take this one
                     target = candidate;
                     break;
@@ -140,6 +147,7 @@ function run(creep, scene) {
             console.log("Worker " + creep.name + " (" + creep.memory.role + ") can't find a target");
             creep.say("no target");
             creep.memory.role = "idle";
+            creep.memory.idling++;
             return false;
         }
         if (creep.memory.role == "harvester") {
@@ -161,7 +169,7 @@ function findrole(scene) {
     if ((scene.harvesters > 2) && (scene.upgraders < 1)) {
         //we have no upgrader
         return "upgrader";
-    } else if ((scene.harvesters < scene.maxharvesters) && (scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity)) {
+    } else if (scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) {
         //not enough reserves, carry for storage
         return "harvester";
     } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0)) {
@@ -192,6 +200,7 @@ function newrole(creep, scene) {
 }
 
 function spawnblueprint(scene) {
+
     if (scene.demandrole != "idle") {
         if ((scene.totalenergy >= scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
             if (scene.totalcapacity > 600) {
@@ -399,7 +408,9 @@ module.exports.loop = function () {
 
     if (Game.time % 10 === 0) {
         if (scene.parameters.DEBUG) {
-            console.log("******** Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + "/" + scene.maxharvesters + ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers + ", Upgraders: " + scene.upgraders +  ", Demand role: " + scene.demandrole);
+            console.log("**********************************************************************");
+            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Workers: " + scene.creeps.length + "/" + scene.maxworkers + ", Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + " , Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers + ", Upgraders: " + scene.upgraders +  ", Demand role: " + scene.demandrole);
+            console.log("**********************************************************************");
         }
     }
 
@@ -416,11 +427,11 @@ module.exports.loop = function () {
         if (spawner.isActive()) { //check if it can be used
             if (!spawner.spawning) { //if we are not already spawning
                 var parts = spawnblueprint(scene);
-                if (parts.length > 0) {
-                    //spawn a creeper
+                if ((parts.length > 0) && (scene.creeps.length < scene.maxworkers)) {
+                    //spawn a worker creeper
                     var newName = 'Worker' + Game.time;
                     if (spawner.spawnCreep(parts, newName, {memory: {role: 'idle'}}) == OK) {
-                        console.log('Spawning new worker');
+                        console.log('--> Spawning new worker');
                     }
                 }
             }
