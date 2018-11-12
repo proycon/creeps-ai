@@ -234,7 +234,11 @@ function getaccessibility(target, scene) {
         Memory.accessibility[target.id] = result;
         return result;
     } catch (e) {
-        return 6;
+        if (target.id == "5bbcae729099fc012e639107") { //temporary cheat
+            return 1
+        } else {
+            return 6;
+        }
     }
 }
 
@@ -267,7 +271,7 @@ module.exports.loop = function () {
 
     if (Game.time % 10 === 0) {
         if (PARAMETERS.DEBUG) {
-            console.log(scene);
+            console.log("Energy" + scene.totalenergy + "/" + scene.totalcapacity + ", Idlers:" + scene.idlers + "Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers);
         }
     }
 
