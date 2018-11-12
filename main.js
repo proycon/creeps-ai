@@ -21,6 +21,7 @@ function planscene() {
         idler: 0,
         hostiles: [],
         hitsMax: 10000, //TODO: determine dynamically
+        targets: {}
     };
 
     //iterate over rooms (single room only for now)
