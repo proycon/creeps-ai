@@ -70,7 +70,7 @@ function commission(creep, scene) {
         for (var key in _.sortBy(potentialtargets, t => creep.pos.getRangeTo(t))) {
             target = potentialtargets[key];
             if (creep.memory.role == "harvester") {
-                if (Memory.allocation[target.id] <= accessibility(target)) {
+                if (Memory.allocation[target.id] <= getaccessibility(target)) {
                     //allocation not full yet, good, we take this one
                     break;
                 }
