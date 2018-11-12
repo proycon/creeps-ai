@@ -39,7 +39,7 @@ function planscene() {
         scene.targets = {
             harvester: room.find(FIND_SOURCES_ACTIVE),
             builder: room.find(FIND_MY_CONSTRUCTION_SITES),
-            upgrader: room.controller,
+            upgrader: [room.controller],
             carrier: room.find(FIND_MY_STRUCTURES, { filter: structure => {
                 return ((structure.energyCapacity) && (structure.energy < structure.energyCapacity));
             }}),
@@ -280,7 +280,7 @@ module.exports.loop = function () {
 
     if (Game.time % 10 === 0) {
         if (scene.parameters.DEBUG) {
-            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers);
+            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers + ", Upgraders: " + scene.upgraders);
         }
     }
 
