@@ -23,6 +23,7 @@ function planscene() {
             MAXDECAY: 0.2,
             MINRESERVE: 0.25, //minimum energy reserve
             DEBUG: true,
+            MAXCREEPS: 15,
         }
     };
 
@@ -50,6 +51,10 @@ function planscene() {
             }}),
             attacker: scene.hostiles
         };
+        scene.maxharvesters = 0;
+        scene.targets.harvester.forEach(t => {
+            scene.maxharvesters += getaccessibility(t, scene);
+        });
         scene.demandrole = findrole(scene);
     });
     return scene;
@@ -67,23 +72,39 @@ function commission(creep, scene) {
         target = null;
     }
     var potentialtargets = scene.targets[creep.memory.role];
+    if (scene.parameters.DEBUG) {
+        console.log("Looking for targets for " + creep.name + "[" + creep.memory.role + "]: " + potentialtargets.length)
+    }
     if (potentialtargets.length == 1) {
         //easy, only one target
         target = potentialtargets[0];
     } else if (potentialtargets.length > 1) {
-        for (var key in _.sortBy(potentialtargets, t => creep.pos.getRangeTo(t))) {
-            target = potentialtargets[key];
+        for (var key in _.sortBy(potentialtargets, t => creep.pos.getRangeTo(t.pos))) {
+            var candidate = potentialtargets[key];
             if (creep.memory.role == "harvester") {
-                if (!(target.id in Memory.servers) || (Memory.servers[target.id].length <= getaccessibility(target))) {
+                if (!(candidate.id in Memory.servers) || (Memory.servers[candidate.id].length <= getaccessibility(candidate, scene))) {
                     //servers not full yet, good, we take this one
+                    target = candidate;
+                    break;
+                }
+            } else if (creep.memory.role == "carrier") {
+                if (candidate.energy < candidate.energyCapacity) {
+                    target = candidate;
                     break;
                 }
             } else {
                 //closest one suffices
+                target = candidate;
                 break;
             }
         }
     } else {
+        target = null;
+    }
+    if (target === null) {
+        if (scene.parameters.DEBUG) {
+            console.log("No target for " + creep.name + "[" + creep.memory.role + "]")
+        }
         return null;
     }
     //commission to the target
@@ -125,12 +146,12 @@ function run(creep, scene) {
             harvester(creep, target, scene);
         } else if (creep.memory.role == "carrier") {
             carrier(creep, target, scene);
+        } else if (creep.memory.role == "builder") {
+            builder(creep, target, scene);
         } else if (creep.memory.role == "upgrader") {
             upgrader(creep, target, scene);
         } else if (creep.memory.role == "repairer") {
             console.log("TODO: implement repairer!")
-        } else if (creep.memory.role == "builder") {
-            console.log("TODO: implement builder!")
         }
         return true;
     }
@@ -140,23 +161,27 @@ function findrole(scene) {
     if ((scene.harvesters > 2) && (scene.upgraders < 1)) {
         //we have no upgrader
         return "upgrader";
-    } else if ((scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
+    } else if ((scene.harvesters < scene.maxharvesters) && (scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity)) {
         //not enough reserves, carry for storage
-        return "carrier";
+        return "harvester";
     } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0)) {
         return "repairer";
     } else if ((scene.targets.builder) && (scene.targets.builder.length > 0)) {
         return "builder";
     }
-    return "idle";
+    return null;
 }
 
 function newrole(creep, scene) {
     //assign a role for this creep
     if ((creep.carry) && (creep.carry.energy > 0)) {
         //we have energy to do something
-        if (scene.demandrole == "idle") {
+        if (!scene.demandrole) {
+            //nothing else to do, let's upgrade!
             return "upgrader";
+        } else if (scene.demandrole == "harvester") {
+            //we already carry energy, complete the harvest by returning it
+            return "carrier";
         } else {
             return scene.demandrole;
         }
@@ -200,6 +225,7 @@ function upgrader(creep, target, scene) {
         creep.moveTo(target, {visualizePathStyle: {stroke: '#0000aa'}});
     } else if (result == ERR_FULL) {
         //find a new target
+        creep.say("full");
         commission(creep, scene);
     } else if (result != OK) {
         console.log("Unexpected result for carrier: " + result);
@@ -214,22 +240,33 @@ function upgrader(creep, target, scene) {
 
 function carrier(creep, target, scene) {
     var result = creep.transfer(target, RESOURCE_ENERGY);
-    if (result == OK)  {
-        if (creep.carry.energy == 0) {
-            if (scene.parameters.DEBUG) {
-                console.log("Worker " + creep.name + " is done carrying")
-            }
-            decommission(creep, target, scene);
-        }
-    } else if (result == ERR_NOT_IN_RANGE) {
-        creep.moveTo(target, {visualizePathStyle: {stroke: '#0000aa'}});
+    if (result == ERR_NOT_IN_RANGE) {
+        creep.moveTo(target, {visualizePathStyle: {stroke: '#0000ff'}});
     } else if (result == ERR_FULL) {
         //find a new target
         commission(creep, scene);
-    } else {
+    } else if (result != OK) {
         console.log("Unexpected result for carrier: " + result);
     }
     if (creep.carry.energy === 0) {
+        if (scene.parameters.DEBUG) {
+            console.log("Worker " + creep.name + " is done carrying")
+        }
+        decommission(creep,target, scene);
+    }
+}
+
+function builder(creep, target, scene) {
+    var result = creep.build(target);
+    if (result == ERR_NOT_IN_RANGE) {
+        creep.moveTo(target, {visualizePathStyle: {stroke: '#00ff00'}});
+    } else if (result != OK) {
+        console.log("Unexpected result for builder: " + result);
+    }
+    if (creep.carry.energy === 0) {
+        if (scene.parameters.DEBUG) {
+            console.log("Worker " + creep.name + " is done building")
+        }
         decommission(creep,target, scene);
     }
 }
@@ -278,7 +315,7 @@ function cleanup(scene) {
                     if (index > -1) {
                         Memory.servers[target_id].splice(index,1);
                         if (scene.parameters.DEBUG) {
-                            console.log("[CLEANUP] Removed " + name + " from servers for " + target_id + " [" + target.name + "]: " + JSON.stringify(Memory.servers[target_id]))
+                            console.log("[CLEANUP] Removed " + name + " from servers for " + target_id + ": " + JSON.stringify(Memory.servers[target_id]))
                         }
                     }
                 }
@@ -362,7 +399,7 @@ module.exports.loop = function () {
 
     if (Game.time % 10 === 0) {
         if (scene.parameters.DEBUG) {
-            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers + ", Upgraders: " + scene.upgraders);
+            console.log("******** Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + "/" + scene.maxharvesters + ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers + ", Upgraders: " + scene.upgraders +  ", Demand role: " + scene.demandrole);
         }
     }
 
