@@ -1,10 +1,5 @@
 /*jshint esnext: true */
 
-const PARAMETERS = {
-    MAXDECAY: 0.2,
-    MINRESERVE: 0.25, //minimum energy reserve
-    DEBUG: true,
-};
 
 function planscene() {
     //init
@@ -17,11 +12,16 @@ function planscene() {
         harvesters: 0,
         upgraders: 0,
         builders: 0,
-        repairer: 0,
-        idler: 0,
+        repairers: 0,
+        idlers: 0,
         hostiles: [],
         hitsMax: 10000, //TODO: determine dynamically
         targets: {}
+        parameters: {
+            MAXDECAY: 0.2,
+            MINRESERVE: 0.25, //minimum energy reserve
+            DEBUG: true,
+        };
     };
 
     //iterate over rooms (single room only for now)
@@ -43,7 +43,7 @@ function planscene() {
                 return ((structure.energyCapacity) && (structure.energy < structure.energyCapacity));
             }}),
             repairer: room.find(FIND_MY_STRUCTURES, { filter: structure => {
-                    return (structure.hitsMax) && (structure.hits < scene.hitsMax) && (structure.hits < (1- PARAMETERS.MAXDECAY) * structure.hitsMax);
+                    return (structure.hitsMax) && (structure.hits < scene.hitsMax) && (structure.hits < (1- scene.parameters.MAXDECAY) * structure.hitsMax);
             }}),
             attacker: scene.hostiles
         };
@@ -92,7 +92,7 @@ function run(creep, scene) {
     var target;
     if (creep.memory.role == "idle") {
         creep.memory.role = newrole(creep, scene);
-        if (PARAMETERS.DEBUG) {
+        if (scene.parameters.DEBUG) {
             console.log("Worker " + creep.name + " assumed role " + creep.memory.role);
             creep.say(creep.memory.role);
         }
@@ -127,7 +127,7 @@ function newrole(creep, scene) {
     //assign a role for this creep
     if ((creep.carry) && (creep.carry.energy > 0)) {
         //we have energy to do something
-        if ((scene.totalenergy < PARAMETERS.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
+        if ((scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
             //not enough reserves, carry for storage
             return "carrier";
         } else if (scene.upgraders < 1) {
@@ -148,7 +148,7 @@ function newrole(creep, scene) {
 }
 
 function spawnblueprint(scene) {
-    if ((scene.totalenergy > PARAMETERS.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
+    if ((scene.totalenergy > scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
         if (scene.totalcapacity > 600) {
             return  [WORK, CARRY,CARRY,MOVE,MOVE];
         } else {
@@ -248,7 +248,7 @@ function run_tower(tower, scene) {
         tower.attack(closestHostile);
     } else {
         var closestDamagedStructure = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-            filter: (struct) => (struct.hits < scene.hitsMax) && struct.hits < struct.hitsMax * (1 - PARAMETERS.MAXDECAY)
+            filter: (struct) => (struct.hits < scene.hitsMax) && struct.hits < struct.hitsMax * (1 - scene.parameters.MAXDECAY)
         });
         if(closestDamagedStructure) {
             tower.repair(closestDamagedStructure);
@@ -270,8 +270,8 @@ module.exports.loop = function () {
     }
 
     if (Game.time % 10 === 0) {
-        if (PARAMETERS.DEBUG) {
-            console.log("Energy" + scene.totalenergy + "/" + scene.totalcapacity + ", Idlers:" + scene.idlers + "Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers);
+        if (scene.parameters.DEBUG) {
+            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers:" + scene.idlers + "Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers);
         }
     }
 
