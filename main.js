@@ -162,7 +162,12 @@ function spawnblueprint(scene) {
 function harvester(creep, target, scene) {
     var result = creep.harvest(target);
     if (result == OK) {
-        decommission(creep, target);
+        if ((creep.carry.energy == creep.carryCapacity) || (target.energy == 0)) {
+            if (scene.parameters.DEBUG) {
+                console.log("Worker " + creep.name + " is done harvesting")
+            }
+            decommission(creep, target);
+        }
     } else if (result == ERR_NOT_IN_RANGE) {
         creep.moveTo(target, {visualizePathStyle: {stroke: '#ffaa00'}});
     }
@@ -187,7 +192,10 @@ function carrier(creep, target, scene) {
 
 function decommission(creep, target) {
     if (creep) {
-        creep.role = "idle";
+        if (scene.parameters.DEBUG) {
+            console.log("Decommissioning " + creep.name)
+        }
+        creep.memory.role = "idle";
         creep.memory.target = null;
     }
     if (target) {
@@ -272,7 +280,7 @@ module.exports.loop = function () {
 
     if (Game.time % 10 === 0) {
         if (scene.parameters.DEBUG) {
-            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers:" + scene.idlers + "Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers);
+            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + "Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers);
         }
     }
 
