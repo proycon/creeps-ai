@@ -86,7 +86,7 @@ function commission(creep, scene) {
             var candidate = potentialtargets[key];
             if (creep.memory.role == "harvester") {
                 if (creep.pos.inRangeTo(candidate,1)) {
-                    //well, we're already in range
+                    //well, we're already in range, it'll do
                     target = candidate;
                     break;
                 } else if (!(candidate.id in Memory.servers) || (Memory.servers[candidate.id].length <= getaccessibility(candidate, scene) * scene.parameters.ACCESSIBILITYFACTOR)) {
@@ -108,7 +108,8 @@ function commission(creep, scene) {
     } else {
         target = null;
     }
-    if (target === null) {
+    if (!target) {
+        console.log("Worker " + creep.name + " (" + creep.memory.role + ") can't find a target (out of " + potentialtargets.length +")");
         if (scene.parameters.DEBUG) {
             console.log("No target for " + creep.name + "[" + creep.memory.role + "]")
         }
@@ -144,10 +145,9 @@ function run(creep, scene) {
         }
         if (!target) {
             //we couldn't find a target, become idle
-            console.log("Worker " + creep.name + " (" + creep.memory.role + ") can't find a target");
-            creep.say("no target");
+            creep.say("?");
             creep.memory.role = "idle";
-            creep.memory.idling++;
+            creep.memory.target = null;
             return false;
         }
         if (creep.memory.role == "harvester") {
