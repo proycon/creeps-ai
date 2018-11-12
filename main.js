@@ -24,7 +24,7 @@ function planscene() {
     };
 
     //iterate over rooms (single room only for now)
-    Game.rooms.forEach(room => {
+    _.forEach(Game.rooms, room => {
         scene.totalenergy += room.energyAvailable;
         scene.totalcapacity += room.energyCapacityAvailable;
         scene.creeps = room.find(FIND_MY_CREEPS);
