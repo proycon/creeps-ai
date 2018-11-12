@@ -50,6 +50,7 @@ function planscene() {
             }}),
             attacker: scene.hostiles
         };
+        scene.demandrole = findrole(scene);
     });
     return scene;
 }
@@ -135,23 +136,29 @@ function run(creep, scene) {
     }
 }
 
+function findrole(scene) {
+    if ((scene.harvesters > 2) && (scene.upgraders < 1)) {
+        //we have no upgrader
+        return "upgrader";
+    } else if ((scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
+        //not enough reserves, carry for storage
+        return "carrier";
+    } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0)) {
+        return "repairer";
+    } else if ((scene.targets.builder) && (scene.targets.builder.length > 0)) {
+        return "builder";
+    }
+    return "idle";
+}
+
 function newrole(creep, scene) {
     //assign a role for this creep
     if ((creep.carry) && (creep.carry.energy > 0)) {
         //we have energy to do something
-        if ((scene.harvesters > 2) && (scene.upgraders < 1)) {
-            //we have no upgrader
+        if (scene.demandrole == "idle") {
             return "upgrader";
-        } else if ((scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
-            //not enough reserves, carry for storage
-            return "carrier";
-        } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0)) {
-            return "repairer";
-        } else if ((scene.targets.builder) && (scene.targets.builder.length > 0)) {
-            return "builder";
         } else {
-            //nothing else to do? let's upgrade!
-            return "upgrader";
+            return scene.demandrole;
         }
     } else {
         //we need energy for whatever we intend to do
@@ -160,11 +167,13 @@ function newrole(creep, scene) {
 }
 
 function spawnblueprint(scene) {
-    if ((scene.totalenergy > scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
-        if (scene.totalcapacity > 600) {
-            return  [WORK, CARRY,CARRY,MOVE,MOVE];
-        } else {
-            return [WORK, CARRY, MOVE];
+    if (scene.demandrole != "idle") {
+        if ((scene.totalenergy >= scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
+            if (scene.totalcapacity > 600) {
+                return  [WORK, CARRY,CARRY,MOVE,MOVE];
+            } else {
+                return [WORK, CARRY, MOVE];
+            }
         }
     }
     return [];
@@ -269,7 +278,7 @@ function cleanup(scene) {
                     if (index > -1) {
                         Memory.servers[target_id].splice(index,1);
                         if (scene.parameters.DEBUG) {
-                            console.log("[CLEANUP] Removed " + creep.name + " [" + creep.memory.role + "] from servers for " + target.id + " [" + target.name + "]: " + JSON.stringify(Memory.servers[target.id]))
+                            console.log("[CLEANUP] Removed " + name + " from servers for " + target_id + " [" + target.name + "]: " + JSON.stringify(Memory.servers[target_id]))
                         }
                     }
                 }
