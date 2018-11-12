@@ -21,7 +21,7 @@ function planscene() {
             MAXDECAY: 0.2,
             MINRESERVE: 0.25, //minimum energy reserve
             DEBUG: true,
-        };
+        }
     };
 
     //iterate over rooms (single room only for now)
