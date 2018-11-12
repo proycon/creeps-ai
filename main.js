@@ -280,7 +280,7 @@ module.exports.loop = function () {
         run_tower(tower, scene);
     });
 
-    Game.spawns.forEach(spawner => {
+    _.forEach(Game.spawns, spawner => {
         if (spawner.isActive()) { //check if it can be used
             if (!spawner.spawning) { //if we are not already spawning
                 var parts = spawnblueprint(scene);
