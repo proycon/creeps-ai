@@ -1,30 +1,34 @@
 /*jshint esnext: true */
 
-const PARAMETERS = {
-    MAXDECAY: 0.2,
-    MINRESERVE: 0.25, //minimum energy reserve
-    DEBUG: true,
-};
 
 function planscene() {
     //init
-    if (!Memory.allocation) {
-       Memory.allocation = {};
+    if (!Memory.servers) {
+       console.log("Initializing memory");
+       Memory.servers = {};
     }
     var scene = {
         totalenergy: 0,
         totalcapacity: 0,
         harvesters: 0,
+        carriers: 0,
         upgraders: 0,
         builders: 0,
-        repairer: 0,
-        idler: 0,
+        repairers: 0,
+        idlers: 0,
         hostiles: [],
         hitsMax: 10000, //TODO: determine dynamically
+        targets: {},
+        parameters: {
+            MAXDECAY: 0.2,
+            MINRESERVE: 0.25, //minimum energy reserve
+            DEBUG: true,
+        }
     };
 
     //iterate over rooms (single room only for now)
-    Game.rooms.forEach(room => {
+    _.forEach(Game.rooms, room => {
+        scene.room = room;
         scene.totalenergy += room.energyAvailable;
         scene.totalcapacity += room.energyCapacityAvailable;
         scene.creeps = room.find(FIND_MY_CREEPS);
@@ -37,12 +41,12 @@ function planscene() {
         scene.targets = {
             harvester: room.find(FIND_SOURCES_ACTIVE),
             builder: room.find(FIND_MY_CONSTRUCTION_SITES),
-            upgrader: room.controller,
+            upgrader: [room.controller],
             carrier: room.find(FIND_MY_STRUCTURES, { filter: structure => {
                 return ((structure.energyCapacity) && (structure.energy < structure.energyCapacity));
             }}),
             repairer: room.find(FIND_MY_STRUCTURES, { filter: structure => {
-                    return (structure.hitsMax) && (structure.hits < scene.hitsMax) && (structure.hits < (1- PARAMETERS.MAXDECAY) * structure.hitsMax);
+                    return (structure.hitsMax) && (structure.hits < scene.hitsMax) && (structure.hits < (1- scene.parameters.MAXDECAY) * structure.hitsMax);
             }}),
             attacker: scene.hostiles
         };
@@ -58,7 +62,7 @@ function commission(creep, scene) {
     if (creep.memory.target) {
         //we already have a target, set a new one
         target = Game.getObjectById(creep.memory.target);
-        decommission(null, target);
+        decommission(null, target, scene);
         target = null;
     }
     var potentialtargets = scene.targets[creep.memory.role];
@@ -69,8 +73,8 @@ function commission(creep, scene) {
         for (var key in _.sortBy(potentialtargets, t => creep.pos.getRangeTo(t))) {
             target = potentialtargets[key];
             if (creep.memory.role == "harvester") {
-                if (Memory.allocation[target.id] <= accessibility(target)) {
-                    //allocation not full yet, good, we take this one
+                if (!(target.id in Memory.servers) || (Memory.servers[target.id].length <= getaccessibility(target))) {
+                    //servers not full yet, good, we take this one
                     break;
                 }
             } else {
@@ -83,7 +87,18 @@ function commission(creep, scene) {
     }
     //commission to the target
     creep.memory.target = target.id;
-    Memory.allocation[target] += 1;
+    if (!(target.id in Memory.servers) || (!Memory.servers[target.id])) {
+        Memory.servers[target.id] = [creep.name];
+    } else if (Memory.servers[target.id].indexOf(creep.name) === -1) {
+        Memory.servers[target.id].push(creep.name);
+    }
+    if (scene.parameters.DEBUG) {
+        console.log("Added " + creep.name + " to servers for " + target.id  + ": " + JSON.stringify(Memory.servers[target.id]))
+    }
+
+    if (scene.parameters.DEBUG) {
+        console.log("servers for " + target.id + ": " + Memory.servers[target.id]);
+    }
     return target;
 }
 
@@ -91,14 +106,14 @@ function run(creep, scene) {
     var target;
     if (creep.memory.role == "idle") {
         creep.memory.role = newrole(creep, scene);
-        if (PARAMETERS.DEBUG) {
+        if (scene.parameters.DEBUG) {
             console.log("Worker " + creep.name + " assumed role " + creep.memory.role);
             creep.say(creep.memory.role);
         }
     }
     if (creep.memory.role != "idle") {
         if (!creep.memory.target) {
-            target = commission(creep);
+            target = commission(creep, scene);
         } else {
             target = Game.getObjectById(creep.memory.target);
         }
@@ -110,9 +125,15 @@ function run(creep, scene) {
             return false;
         }
         if (creep.memory.role == "harvester") {
-            harvester(creep, target);
+            harvester(creep, target, scene);
         } else if (creep.memory.role == "carrier") {
-            carrier(creep, target);
+            carrier(creep, target, scene);
+        } else if (creep.memory.role == "upgrader") {
+            upgrader(creep, target, scene);
+        } else if (creep.memory.role == "repairer") {
+            console.log("TODO: implement repairer!")
+        } else if (creep.memory.role == "builder") {
+            console.log("TODO: implement builder!")
         }
         return true;
     }
@@ -122,12 +143,12 @@ function newrole(creep, scene) {
     //assign a role for this creep
     if ((creep.carry) && (creep.carry.energy > 0)) {
         //we have energy to do something
-        if ((scene.totalenergy < PARAMETERS.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
+        if ((scene.harvesters > 2) && (scene.upgraders < 1)) {
+            //we have no upgrader
+            return "upgrader";
+        } else if ((scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalenergy < 300)) {
             //not enough reserves, carry for storage
             return "carrier";
-        } else if (scene.upgraders < 1) {
-            //we have no upgrade
-            return "upgrader";
         } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0)) {
             return "repairer";
         } else if ((scene.targets.builder) && (scene.targets.builder.length > 0)) {
@@ -143,7 +164,7 @@ function newrole(creep, scene) {
 }
 
 function spawnblueprint(scene) {
-    if ((scene.totalenergy > PARAMETERS.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
+    if ((scene.totalenergy > scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
         if (scene.totalcapacity > 600) {
             return  [WORK, CARRY,CARRY,MOVE,MOVE];
         } else {
@@ -153,48 +174,105 @@ function spawnblueprint(scene) {
     return [];
 }
 
-function harvester(creep, target) {
+function harvester(creep, target, scene) {
     var result = creep.harvest(target);
     if (result == OK) {
-        decommission(creep, target);
+        if ((creep.carry.energy == creep.carryCapacity) || (target.energy == 0)) {
+            if (scene.parameters.DEBUG) {
+                console.log("Worker " + creep.name + " is done harvesting")
+            }
+            decommission(creep, target, scene);
+        }
     } else if (result == ERR_NOT_IN_RANGE) {
-        creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'}});
+        creep.moveTo(target, {visualizePathStyle: {stroke: '#ffaa00'}});
     }
 }
 
-function carrier(creep, target) {
-    var result = creep.transfer(target, RESOURCE_ENERGY);
-    if (result == OK)  {
-        decommission(creep, target);
-    } else if (result == ERR_NOT_IN_RANGE) {
-        creep.moveTo(source, {visualizePathStyle: {stroke: '#0000aa'}});
+
+function upgrader(creep, target, scene) {
+    var result = creep.upgradeController(target);
+    if (result == ERR_NOT_IN_RANGE) {
+        creep.moveTo(target, {visualizePathStyle: {stroke: '#0000aa'}});
     } else if (result == ERR_FULL) {
         //find a new target
-        commission(creep);
+        commission(creep, scene);
+    } else if (result != OK) {
+        console.log("Unexpected result for carrier: " + result);
+    }
+    if (creep.carry.energy === 0) {
+            if (scene.parameters.DEBUG) {
+                console.log("Worker " + creep.name + " is done upgrading")
+            }
+        decommission(creep,target, scene);
+    }
+}
+
+function carrier(creep, target, scene) {
+    var result = creep.transfer(target, RESOURCE_ENERGY);
+    if (result == OK)  {
+        if (creep.carry.energy == 0) {
+            if (scene.parameters.DEBUG) {
+                console.log("Worker " + creep.name + " is done carrying")
+            }
+            decommission(creep, target, scene);
+        }
+    } else if (result == ERR_NOT_IN_RANGE) {
+        creep.moveTo(target, {visualizePathStyle: {stroke: '#0000aa'}});
+    } else if (result == ERR_FULL) {
+        //find a new target
+        commission(creep, scene);
     } else {
         console.log("Unexpected result for carrier: " + result);
     }
     if (creep.carry.energy === 0) {
-        decommission(creep,target);
+        decommission(creep,target, scene);
     }
 }
 
-function decommission(creep, target) {
+function decommission(creep, target, scene) {
+    if (typeof creep !== "object") {
+        throw "decommission: creep is not an object";
+    }
+    if (typeof target !== "object") {
+        throw "decommission: target is not an object";
+    }
     if (creep) {
-        creep.role = "idle";
+        if (scene.parameters.DEBUG) {
+            console.log("Decommissioning " + creep.name)
+        }
+        creep.memory.role = "idle";
         creep.memory.target = null;
+        if ((target.id in Memory.servers) && (Memory.servers[target.id])) {
+            console.log(target.id);
+            var index = Memory.servers[target.id];
+            if (index > -1) {
+                Memory.servers[target_id].splice(index,1);
+            }
+        }
     }
     if (target) {
-        Memory.allocation[target.id] -= 1;
+        if (target.id in Memory.servers) {
+            delete Memory.servers[target.id];
+        }
+        if (scene.parameters.DEBUG) {
+            console.log("Decommissioning target " + target.id + ": " + JSON.stringify(Memory.servers[target.id]));
+        }
     }
 }
+
 
 function cleanup() {
     //Garbage collection
     for(var name in Memory.creeps) {
         if(!Game.creeps[name]) {
-            if (Memory.creeps[name].target) {
-                Memory.allocation[Memory.creeps[name].target] -= 1;
+            var target_id = Memory.creeps[name].target;
+            if ((target_id) && (target_id in Memory.servers)) {
+                if (target_id in Memory.servers) {
+                    var index = Memory.servers[target_id];
+                    if (index > -1) {
+                        Memory.servers[target_id].splice(index,1);
+                    }
+                }
             }
             delete Memory.creeps[name];
         }
@@ -216,17 +294,25 @@ function getaccessibility(target, scene) {
     if (target.id in Memory.accessibility) {
         return Memory.accessibility[target.id];
     }
-    const terrain = new Room.Terrain(room);
-    var result = 0;
-    for (var x = -1; x <= 1; x++) {
-        for (var y = -1; x <= 1; x++) {
-            if (!((x === 0) && (y === 0))) {
-                result += (terrain.get(target.pos.x - x, target.pos.y - y) != TERRAIN_MASK_WALL);
+    try {
+        const terrain = new Room.Terrain(target.room);
+        var result = 0;
+        for (var x = -1; x <= 1; x++) {
+            for (var y = -1; x <= 1; x++) {
+                if (!((x === 0) && (y === 0))) {
+                    result += (terrain.get(target.pos.x - x, target.pos.y - y) != TERRAIN_MASK_WALL);
+                }
             }
         }
+        Memory.accessibility[target.id] = result;
+        return result;
+    } catch (e) {
+        if (target.id == "5bbcae729099fc012e639107") { //temporary cheat
+            return 1
+        } else {
+            return 6;
+        }
     }
-    Memory.accessibility[target.id] = result;
-    return result;
 }
 
 function run_tower(tower, scene) {
@@ -235,7 +321,7 @@ function run_tower(tower, scene) {
         tower.attack(closestHostile);
     } else {
         var closestDamagedStructure = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-            filter: (struct) => (struct.hits < scene.hitsMax) && struct.hits < struct.hitsMax * (1 - PARAMETERS.MAXDECAY)
+            filter: (struct) => (struct.hits < scene.hitsMax) && struct.hits < struct.hitsMax * (1 - scene.parameters.MAXDECAY)
         });
         if(closestDamagedStructure) {
             tower.repair(closestDamagedStructure);
@@ -246,11 +332,28 @@ function run_tower(tower, scene) {
 
 module.exports.loop = function () {
 
+    if ((!Memory.accessibility) || (Memory.reset)) {
+        Memory.accessibility = {};
+    }
+    if (Memory.reset) {
+        console.log("Resetting!");
+        Memory.servers = {};
+        _.forEach(Game.creeps, creep => {
+            creep.memory.role = "idle";
+            creep.memory.target = null;
+        });
+        Memory.reset = false;
+    }
+
     var scene = planscene();
 
+    if (scene == null) {
+        return false;
+    }
+
     if (Game.time % 10 === 0) {
-        if (PARAMETERS.DEBUG) {
-            console.log(scene);
+        if (scene.parameters.DEBUG) {
+            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters, ", Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers + ", Upgraders: " + scene.upgraders);
         }
     }
 
@@ -263,7 +366,7 @@ module.exports.loop = function () {
         run_tower(tower, scene);
     });
 
-    Game.spawns.forEach(spawner => {
+    _.forEach(Game.spawns, spawner => {
         if (spawner.isActive()) { //check if it can be used
             if (!spawner.spawning) { //if we are not already spawning
                 var parts = spawnblueprint(scene);
