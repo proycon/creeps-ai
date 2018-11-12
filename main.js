@@ -248,6 +248,10 @@ module.exports.loop = function () {
 
     var scene = planscene();
 
+    if (scene == null) {
+        return false;
+    }
+
     if (Game.time % 10 === 0) {
         if (PARAMETERS.DEBUG) {
             console.log(scene);
