@@ -21,10 +21,13 @@ function planscene() {
         targets: {},
         parameters: {
             MAXDECAY: 0.2,
-            MINRESERVE: 0.25, //minimum energy reserve
+            MINRESERVE: 0.8, //minimum energy reserve
             DEBUG: true,
             MAXWORKERFACTOR: 2, //three times as many as we have access points near sources (since many will be travelling or working anyway)
             ACCESSIBILITYFACTOR: 2,
+            BUILDSHARE: 0.2,
+            REPAIRSHARE: 0.1,
+            UPGRADESHARE: 0.2,
         }
     };
 
@@ -75,7 +78,7 @@ function commission(creep, scene) {
     }
     var potentialtargets = scene.targets[creep.memory.role];
     if (scene.parameters.DEBUG) {
-        console.log("Looking for targets for " + creep.name + "[" + creep.memory.role + "]: " + potentialtargets.length)
+        console.log("Looking for targets for " + creep.name + "[" + creep.memory.role + "]: " + "(" + potentialtargets.length + ") " + _.map(potentialtargets, x => x.id + " [" + x.structureType + "]"));
     }
     if (potentialtargets.length == 1) {
         //easy, only one target
@@ -128,6 +131,9 @@ function commission(creep, scene) {
     return target;
 }
 
+
+
+
 function run(creep, scene) {
     var target;
     if (creep.memory.role == "idle") {
@@ -166,18 +172,20 @@ function run(creep, scene) {
 }
 
 function findrole(scene) {
-    if ((scene.harvesters > 2) && (scene.upgraders < 1)) {
+    if ((scene.harvesters + scene.carriers > 2) && (scene.upgraders < 1)) {
         //we have no upgrader
         return "upgrader";
     } else if (scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) {
         //not enough reserves, carry for storage
         return "harvester";
-    } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0)) {
+    } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0) && (scene.repairers / scene.maxworkers < scene.parameters.REPAIRSHARE)) {
         return "repairer";
-    } else if ((scene.targets.builder) && (scene.targets.builder.length > 0)) {
+    } else if ((scene.targets.builder) && (scene.targets.builder.length > 0) && (scene.builders / scene.maxworkers < scene.parameters.BUILDSHARE)) {
         return "builder";
+    } else if ((scene.upgraders / scene.maxworkers < scene.parameters.UPGRADESHARE)) {
+        return "upgrader";
     }
-    return null;
+    return "harvester";
 }
 
 function newrole(creep, scene) {
@@ -200,15 +208,14 @@ function newrole(creep, scene) {
 }
 
 function spawnblueprint(scene) {
-
     if (scene.demandrole != "idle") {
-        if ((scene.totalenergy >= scene.parameters.MINRESERVE * scene.totalcapacity) || (scene.totalEnergy == scene.totalcapacity)) {
-            if (scene.totalcapacity > 600) {
+            if (scene.creeps.length < 2) {
+                return [WORK, CARRY, MOVE];
+            } if (scene.totalcapacity > 600) {
                 return  [WORK, CARRY,CARRY,MOVE,MOVE];
             } else {
                 return [WORK, CARRY, MOVE];
             }
-        }
     }
     return [];
 }
@@ -409,7 +416,7 @@ module.exports.loop = function () {
     if (Game.time % 10 === 0) {
         if (scene.parameters.DEBUG) {
             console.log("**********************************************************************");
-            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Workers: " + scene.creeps.length + "/" + scene.maxworkers + ", Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + " , Carriers: " + scene.carriers + ", Builders: " + scene.builders + ", Repairers: " + scene.repairers + ", Upgraders: " + scene.upgraders +  ", Demand role: " + scene.demandrole);
+            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Workers: " + scene.creeps.length + "/" + scene.maxworkers + ", Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + " , Carriers: " + scene.carriers + ", Builders: " + scene.builders + "/" + Math.ceil(scene.maxworkers * scene.parameters.BUILDSHARE) + " , Repairers: " + scene.repairers + "/" + Math.ceil(scene.maxworkers * scene.parameters.REPAIRSHARE) + ", Upgraders: " + scene.upgraders +  "/" + Math.ceil(scene.maxworkers * scene.parameters.UPGRADESHARE)  + ", Demand role: " + scene.demandrole);
             console.log("**********************************************************************");
         }
     }
