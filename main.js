@@ -69,6 +69,7 @@ function planscene() {
 
 function commission(creep, scene) {
     // commissions a creep to a target
+    if (!creep) return false;
     var target = null;
     if (creep.memory.target) {
         //we already have a target, set a new one
@@ -239,10 +240,6 @@ function upgrader(creep, target, scene) {
     var result = creep.upgradeController(target);
     if (result == ERR_NOT_IN_RANGE) {
         creep.moveTo(target, {visualizePathStyle: {stroke: '#0000aa'}});
-    } else if (result == ERR_FULL) {
-        //find a new target
-        creep.say("full");
-        commission(creep, scene);
     } else if (result != OK) {
         console.log("Unexpected result for carrier: " + result);
     }
@@ -256,13 +253,24 @@ function upgrader(creep, target, scene) {
 
 function carrier(creep, target, scene) {
     var result = creep.transfer(target, RESOURCE_ENERGY);
+    var targetfull = target.energy == target.energyCapacity;
     if (result == ERR_NOT_IN_RANGE) {
         creep.moveTo(target, {visualizePathStyle: {stroke: '#0000ff'}});
     } else if (result == ERR_FULL) {
         //find a new target
         commission(creep, scene);
+        targetfull = true;
     } else if (result != OK) {
         console.log("Unexpected result for carrier: " + result);
+    }
+    if (targetfull) {
+        if (target.id in Memory.servers) {
+            Memory.servers[target.id].forEach(server_id => {
+                console.log("Target is full, decomissioning " + server_id);
+                var server = Game.getObjectById(server_id);
+                decommission(server,target, scene);
+            });
+        }
     }
     if (creep.carry.energy === 0) {
         if (scene.parameters.DEBUG) {
@@ -314,7 +322,7 @@ function decommission(creep, target, scene) {
             delete Memory.servers[target.id];
         }
         if (scene.parameters.DEBUG) {
-            console.log("Removed target " + target.id + ": " + JSON.stringify(Memory.servers[target.id]));
+            console.log("Removed entire target " + target.id + ": " + JSON.stringify(Memory.servers[target.id]));
         }
     }
 }
