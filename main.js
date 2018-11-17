@@ -196,9 +196,13 @@ function newrole(creep, scene) {
         if (!scene.demandrole) {
             //nothing else to do, let's upgrade!
             return "upgrader";
-        } else if (scene.demandrole == "harvester") {
-            //we already carry energy, complete the harvest by returning it
-            return "carrier";
+        } else if ((scene.demandrole == "harvester") ) {
+            if (scene.targets.carrier.length > 0) {
+                //we already carry energy, complete the harvest by returning it
+                return "carrier";
+            } else {
+                return "upgrader";
+            }
         } else {
             return scene.demandrole;
         }
@@ -258,7 +262,7 @@ function carrier(creep, target, scene) {
         creep.moveTo(target, {visualizePathStyle: {stroke: '#0000ff'}});
     } else if (result == ERR_FULL) {
         //find a new target
-        commission(creep, scene);
+        decommission(creep, target, scene);
         targetfull = true;
     } else if (result != OK) {
         console.log("Unexpected result for carrier: " + result);
