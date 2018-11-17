@@ -15,6 +15,7 @@ function planscene(parameters) {
             room: room.name,
             totalenergy: 0,
             totalcapacity: 0,
+            workers: 0,
             harvesters: 0,
             carriers: 0,
             upgraders: 0,
@@ -221,7 +222,7 @@ function newrole(creep, scene) {
 
 function spawnblueprint(scene) {
     if (scene.demandrole != "idle") {
-            if (scene.creeps.length < 2) {
+            if (scene.workers < 2) {
                 return [WORK, CARRY, MOVE];
             } else if (scene.totalcapacity >= 800) {
                 return  [WORK, WORK, CARRY,CARRY,CARRY, MOVE,MOVE, MOVE, MOVE, MOVE];
@@ -426,7 +427,7 @@ function runscene(scene) {
     if (Game.time % 10 === 0) {
         if (scene.parameters.DEBUG) {
             console.log("**********************************************************************");
-            console.log("Room " + scene.room + " Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Workers: " + scene.creeps.length + "/" + scene.maxworkers + ", Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + " , Carriers: " + scene.carriers + ", Builders: " + scene.builders + "/" + Math.ceil(scene.maxworkers * scene.parameters.BUILDSHARE) + " , Repairers: " + scene.repairers + "/" + Math.ceil(scene.maxworkers * scene.parameters.REPAIRSHARE) + ", Upgraders: " + scene.upgraders +  "/" + Math.ceil(scene.maxworkers * scene.parameters.UPGRADESHARE)  + ", Demand role: " + scene.demandrole);
+            console.log("Room " + scene.room + " Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Workers: " + scene.workers + "/" + scene.maxworkers + ", Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + " , Carriers: " + scene.carriers + ", Builders: " + scene.builders + "/" + Math.ceil(scene.maxworkers * scene.parameters.BUILDSHARE) + " , Repairers: " + scene.repairers + "/" + Math.ceil(scene.maxworkers * scene.parameters.REPAIRSHARE) + ", Upgraders: " + scene.upgraders +  "/" + Math.ceil(scene.maxworkers * scene.parameters.UPGRADESHARE)  + ", Demand role: " + scene.demandrole);
             console.log("**********************************************************************");
         }
     }
@@ -444,7 +445,7 @@ function runscene(scene) {
         if (  (spawner.room.name == scene.room) && (spawner.isActive())) { //check if it can be used
             if (!spawner.spawning) { //if we are not already spawning
                 var parts = spawnblueprint(scene);
-                if ((parts.length > 0) && (scene.creeps.length < scene.maxworkers)) {
+                if ((parts.length > 0) && (scene.workers < scene.maxworkers)) {
                     //spawn a worker creeper
                     var newName = 'Worker' + Game.time;
                     if (spawner.spawnCreep(parts, newName, {memory: {role: 'idle'}}) == OK) {
