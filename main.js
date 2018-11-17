@@ -86,29 +86,35 @@ function commission(creep, scene) {
         target = potentialtargets[0];
     } else if (potentialtargets.length > 1) {
         var leastservers; //tODO
-        for (var key in _.sortBy(potentialtargets, t => creep.pos.getRangeTo(t.pos))) {
-            var candidate = potentialtargets[key];
-            if (creep.memory.role == "harvester") {
-                if (creep.pos.inRangeTo(candidate,1)) {
-                    //well, we're already in range, it'll do
+        var sortedpotentialtargets = _.sortBy(potentialtargets, t => creep.pos.getRangeTo(t.pos));
+        sortedpotentialtargets.forEach(function(candidate){
+            if (target === null) {
+                //console.log("DEBUG", creep.id, creep.memory.role, candidate.id, creep.pos.getRangeTo(candidate.pos));
+                if (creep.memory.role === "harvester") {
+                    if (creep.pos.inRangeTo(candidate,1)) {
+                        //well, we're already in range, it'll do
+                        target = candidate;
+                        return;
+                    } else if (!(candidate.id in Memory.servers) || (Memory.servers[candidate.id].length <= getaccessibility(candidate, scene) * scene.parameters.ACCESSIBILITYFACTOR)) {
+                        //servers not full yet, good, we take this one
+                        target = candidate;
+                        return;
+                    }
+                } else if (creep.memory.role === "carrier") {
+                    if (candidate.energy < candidate.energyCapacity) {
+                        target = candidate;
+                        return;
+                    } else {
+
+                    }
+                } else {
+                    //closest one suffices
                     target = candidate;
-                    break;
-                } else if (!(candidate.id in Memory.servers) || (Memory.servers[candidate.id].length <= getaccessibility(candidate, scene) * scene.parameters.ACCESSIBILITYFACTOR)) {
-                    //servers not full yet, good, we take this one
-                    target = candidate;
-                    break;
+                    return;
                 }
-            } else if (creep.memory.role == "carrier") {
-                if (candidate.energy < candidate.energyCapacity) {
-                    target = candidate;
-                    break;
-                }
-            } else {
-                //closest one suffices
-                target = candidate;
-                break;
             }
-        }
+        });
+        //console.log("COMMISSION RESULT", target.id);
     } else {
         target = null;
     }
@@ -165,8 +171,8 @@ function run(creep, scene) {
             builder(creep, target, scene);
         } else if (creep.memory.role == "upgrader") {
             upgrader(creep, target, scene);
-        } else if (creep.memory.role == "repairer") {
-            console.log("TODO: implement repairer!")
+        //} else if (creep.memory.role == "repairer") {
+        //    console.log("TODO: implement repairer!")
         }
         return true;
     }
@@ -179,8 +185,8 @@ function findrole(scene) {
     } else if (scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) {
         //not enough reserves, carry for storage
         return "harvester";
-    } else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0) && (scene.repairers / scene.maxworkers < scene.parameters.REPAIRSHARE)) {
-        return "repairer";
+    //} else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0) && (scene.repairers / scene.maxworkers < scene.parameters.REPAIRSHARE)) {
+    //    return "repairer";
     } else if ((scene.targets.builder) && (scene.targets.builder.length > 0) && (scene.builders / scene.maxworkers < scene.parameters.BUILDSHARE)) {
         return "builder";
     } else if ((scene.upgraders / scene.maxworkers < scene.parameters.UPGRADESHARE)) {
@@ -216,7 +222,9 @@ function spawnblueprint(scene) {
     if (scene.demandrole != "idle") {
             if (scene.creeps.length < 2) {
                 return [WORK, CARRY, MOVE];
-            } if (scene.totalcapacity > 600) {
+            } else if (scene.totalcapacity >= 800) {
+                return  [WORK, WORK, CARRY,CARRY,CARRY, MOVE,MOVE, MOVE, MOVE, MOVE];
+            } else if (scene.totalcapacity >= 600) {
                 return  [WORK, CARRY,CARRY,MOVE,MOVE];
             } else {
                 return [WORK, CARRY, MOVE];
