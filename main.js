@@ -1,49 +1,45 @@
 /*jshint esnext: true */
 
 
-function planscene() {
+function planscene(parameters) {
     //init
     if (!Memory.servers) {
        console.log("Initializing memory");
        Memory.servers = {};
     }
-    var scene = {
-        totalenergy: 0,
-        totalcapacity: 0,
-        harvesters: 0,
-        carriers: 0,
-        upgraders: 0,
-        builders: 0,
-        repairers: 0,
-        idlers: 0,
-        hostiles: [],
-        hitsMax: 10000, //TODO: determine dynamically
-        targets: {},
-        parameters: {
-            MAXDECAY: 0.2,
-            MINRESERVE: 0.8, //minimum energy reserve
-            DEBUG: true,
-            MAXWORKERFACTOR: 2, //three times as many as we have access points near sources (since many will be travelling or working anyway)
-            ACCESSIBILITYFACTOR: 2,
-            BUILDSHARE: 0.2,
-            REPAIRSHARE: 0.1,
-            UPGRADESHARE: 0.2,
-        }
-    };
+    var scene = {}
 
     //iterate over rooms (single room only for now)
     _.forEach(Game.rooms, room => {
-        scene.room = room;
-        scene.totalenergy += room.energyAvailable;
-        scene.totalcapacity += room.energyCapacityAvailable;
-        scene.creeps = room.find(FIND_MY_CREEPS);
-        scene.hostiles = room.find(FIND_HOSTILE_CREEPS);
-        scene.towers =  room.find(FIND_MY_STRUCTURES, { filter: structure => structure.structureType == STRUCTURE_TOWER });
-        scene.creeps.forEach(creep => {
+        scene[room.name] =  {
+            room: room.name,
+            totalenergy: 0,
+            totalcapacity: 0,
+            harvesters: 0,
+            carriers: 0,
+            upgraders: 0,
+            builders: 0,
+            repairers: 0,
+            idlers: 0,
+            hostiles: [],
+            hitsMax: 50000, //TODO: determine dynamically
+            targets: {},
+            parameters: parameters,
+        };
+        scene[room.name].totalenergy += room.energyAvailable;
+        scene[room.name].totalcapacity += room.energyCapacityAvailable;
+        scene[room.name].creeps = room.find(FIND_MY_CREEPS);
+        scene[room.name].hostiles = room.find(FIND_HOSTILE_CREEPS);
+        scene[room.name].towers =  room.find(FIND_MY_STRUCTURES, { filter: structure => structure.structureType == STRUCTURE_TOWER });
+        scene[room.name].workers = 0;
+        scene[room.name].creeps.forEach(creep => {
             if (!creep.memory.role) creep.memory.role = "idle";
             scene[creep.memory.role + 's']++;
+            if (creep.name.substring(0,6) == "Worker") {
+                scene[room.name].workers++;
+            }
         });
-        scene.targets = {
+        scene[room.name].targets = {
             harvester: room.find(FIND_SOURCES_ACTIVE),
             builder: room.find(FIND_MY_CONSTRUCTION_SITES),
             upgrader: [room.controller],
@@ -51,18 +47,18 @@ function planscene() {
                 return ((structure.energyCapacity) && (structure.energy < structure.energyCapacity));
             }}),
             repairer: room.find(FIND_MY_STRUCTURES, { filter: structure => {
-                    return (structure.hitsMax) && (structure.hits < scene.hitsMax) && (structure.hits < (1- scene.parameters.MAXDECAY) * structure.hitsMax);
+                    return (structure.hitsMax) && (structure.hits < scene[room.name].hitsMax) && (structure.hits < (1- scene[room.name].parameters.MAXDECAY) * structure.hitsMax);
             }}),
-            attacker: scene.hostiles
+            attacker: scene[room.name].hostiles
         };
-        scene.maxworkers = 0;
-        scene.targets.harvester.forEach(t => {
-            scene.maxworkers += getaccessibility(t, scene);
+        scene[room.name].maxworkers = 0;
+        scene[room.name].targets.harvester.forEach(t => {
+            scene[room.name].maxworkers += getaccessibility(t, scene);
         });
-        scene.maxworkers = scene.maxworkers * scene.parameters.MAXWORKERFACTOR;
-        scene.demandrole = findrole(scene);
+        scene[room.name].maxworkers = scene[room.name].maxworkers * parameters.MAXWORKERFACTOR;
+        scene[room.name].demandrole = findrole(scene[room.name]);
+        runscene(scene[room.name]);
     });
-    return scene;
 }
 
 
@@ -77,8 +73,11 @@ function commission(creep, scene) {
         decommission(null, target, scene);
         target = null;
     }
+    if (creep.memory.role === "custom") {
+        return;
+    }
     var potentialtargets = scene.targets[creep.memory.role];
-    if (scene.parameters.DEBUG) {
+    if ((scene.parameters.DEBUG) && (potentialtargets)) {
         console.log("Looking for targets for " + creep.name + "[" + creep.memory.role + "]: " + "(" + potentialtargets.length + ") " + _.map(potentialtargets, x => x.id + " [" + x.structureType + "]"));
     }
     if (potentialtargets.length == 1) {
@@ -171,6 +170,8 @@ function run(creep, scene) {
             builder(creep, target, scene);
         } else if (creep.memory.role == "upgrader") {
             upgrader(creep, target, scene);
+        } else if (creep.memory.role == "reserver") {
+            reserver(creep, target, scene);
         //} else if (creep.memory.role == "repairer") {
         //    console.log("TODO: implement repairer!")
         }
@@ -182,7 +183,7 @@ function findrole(scene) {
     if ((scene.harvesters + scene.carriers > 2) && (scene.upgraders < 1)) {
         //we have no upgrader
         return "upgrader";
-    } else if (scene.totalenergy < scene.parameters.MINRESERVE * scene.totalcapacity) {
+    } else if (scene.totalenergy < scene.parameters.MINRESERVE) {
         //not enough reserves, carry for storage
         return "harvester";
     //} else if ((scene.targets.repairer) && (scene.targets.repairer.length > 0) && (scene.repairers / scene.maxworkers < scene.parameters.REPAIRSHARE)) {
@@ -307,6 +308,16 @@ function builder(creep, target, scene) {
     }
 }
 
+
+function reserver(creep, target, scene) {
+    var result = creep.reserveController(target);
+    if (result == ERR_NOT_IN_RANGE) {
+        creep.moveTo(target, {visualizePathStyle: {stroke: '#ffffff'}});
+    } else if (result != OK) {
+        console.log("Unexpected result for reserver: " + result);
+    }
+}
+
 function decommission(creep, target, scene) {
     if (typeof creep !== "object") {
         throw "decommission: creep is not an object";
@@ -340,7 +351,7 @@ function decommission(creep, target, scene) {
 }
 
 
-function cleanup(scene) {
+function cleanup(parameters) {
     //Garbage collection
     for(var name in Memory.creeps) {
         if(!Game.creeps[name]) {
@@ -350,7 +361,7 @@ function cleanup(scene) {
                     var index = Memory.servers[target_id].indexOf(name);
                     if (index > -1) {
                         Memory.servers[target_id].splice(index,1);
-                        if (scene.parameters.DEBUG) {
+                        if (parameters.DEBUG) {
                             console.log("[CLEANUP] Removed " + name + " from servers for " + target_id + ": " + JSON.stringify(Memory.servers[target_id]))
                         }
                     }
@@ -411,6 +422,39 @@ function run_tower(tower, scene) {
     }
 }
 
+function runscene(scene) {
+    if (Game.time % 10 === 0) {
+        if (scene.parameters.DEBUG) {
+            console.log("**********************************************************************");
+            console.log("Room " + scene.room + " Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Workers: " + scene.creeps.length + "/" + scene.maxworkers + ", Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + " , Carriers: " + scene.carriers + ", Builders: " + scene.builders + "/" + Math.ceil(scene.maxworkers * scene.parameters.BUILDSHARE) + " , Repairers: " + scene.repairers + "/" + Math.ceil(scene.maxworkers * scene.parameters.REPAIRSHARE) + ", Upgraders: " + scene.upgraders +  "/" + Math.ceil(scene.maxworkers * scene.parameters.UPGRADESHARE)  + ", Demand role: " + scene.demandrole);
+            console.log("**********************************************************************");
+        }
+    }
+
+    //run all the creeps
+    scene.creeps.forEach(creep => {
+        run(creep, scene);
+    });
+
+    scene.towers.forEach(tower => {
+        run_tower(tower, scene);
+    });
+
+    _.forEach(Game.spawns, spawner => {
+        if (  (spawner.room.name == scene.room) && (spawner.isActive())) { //check if it can be used
+            if (!spawner.spawning) { //if we are not already spawning
+                var parts = spawnblueprint(scene);
+                if ((parts.length > 0) && (scene.creeps.length < scene.maxworkers)) {
+                    //spawn a worker creeper
+                    var newName = 'Worker' + Game.time;
+                    if (spawner.spawnCreep(parts, newName, {memory: {role: 'idle'}}) == OK) {
+                        console.log('--> Spawning new worker');
+                    }
+                }
+            }
+        }
+    });
+}
 
 module.exports.loop = function () {
 
@@ -427,43 +471,21 @@ module.exports.loop = function () {
         Memory.reset = false;
     }
 
-    var scene = planscene();
-
-    if (scene == null) {
-        return false;
+    var parameters = {
+        MAXDECAY: 0.2,
+        MINRESERVE: 600, //minimum energy reserve
+        DEBUG: true,
+        MAXWORKERFACTOR: 2, //three times as many as we have access points near sources (since many will be travelling or working anyway)
+        ACCESSIBILITYFACTOR: 2,
+        BUILDSHARE: 0.2,
+        REPAIRSHARE: 0.1,
+        UPGRADESHARE: 0.2,
     }
 
-    if (Game.time % 10 === 0) {
-        if (scene.parameters.DEBUG) {
-            console.log("**********************************************************************");
-            console.log("Energy: " + scene.totalenergy + "/" + scene.totalcapacity + " , Workers: " + scene.creeps.length + "/" + scene.maxworkers + ", Idlers: " + scene.idlers + ", Harvesters: " + scene.harvesters + " , Carriers: " + scene.carriers + ", Builders: " + scene.builders + "/" + Math.ceil(scene.maxworkers * scene.parameters.BUILDSHARE) + " , Repairers: " + scene.repairers + "/" + Math.ceil(scene.maxworkers * scene.parameters.REPAIRSHARE) + ", Upgraders: " + scene.upgraders +  "/" + Math.ceil(scene.maxworkers * scene.parameters.UPGRADESHARE)  + ", Demand role: " + scene.demandrole);
-            console.log("**********************************************************************");
-        }
-    }
+    var scene = planscene(parameters);
 
-    //run all the creeps
-    scene.creeps.forEach(creep => {
-        run(creep, scene);
-    });
 
-    scene.towers.forEach(tower => {
-        run_tower(tower, scene);
-    });
-
-    _.forEach(Game.spawns, spawner => {
-        if (spawner.isActive()) { //check if it can be used
-            if (!spawner.spawning) { //if we are not already spawning
-                var parts = spawnblueprint(scene);
-                if ((parts.length > 0) && (scene.creeps.length < scene.maxworkers)) {
-                    //spawn a worker creeper
-                    var newName = 'Worker' + Game.time;
-                    if (spawner.spawnCreep(parts, newName, {memory: {role: 'idle'}}) == OK) {
-                        console.log('--> Spawning new worker');
-                    }
-                }
-            }
-        }
-    });
-
-    cleanup(scene);
+    cleanup(parameters);
 };
+
+
